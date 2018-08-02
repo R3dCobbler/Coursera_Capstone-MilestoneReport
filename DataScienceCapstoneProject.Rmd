@@ -1,0 +1,150 @@
+---
+title: "Data Science Capstone Project"
+subtitle: "Milestone Report"
+author: "Mick Sheahan"
+og:
+    type: "article"
+    title: "opengraph title"
+    url: "optional opengraph url"
+    image: "optional opengraph image link"
+    footer:
+        - content: 'Copyright R3dCobbler 2018'
+date: "`r Sys.Date()`"
+output: markdowntemplates::skeleton
+---
+
+```{r setup, include=FALSE, message=FALSE, results='hold'}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+### Introduction
+
+This report is a week 2 progress report of the overall Data Science Capstone project.
+It covers the initial tasks of loading and cleaning the data, carrying out some Exploratory Analysis and Modeling in preparation for the remainder of the project.
+It will form the basis for a prediction algorithm which can be utilised in an application that provides predictive text.
+
+### Getting and cleaning the data
+
+##### Data Loading and Processing  
+The data were downloaded from [here](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip) and unzipped.  
+The data zipfiles contain 4 different languages - German, English, Finnish and Russian.   
+For simplicity I will only use the English language files for this project.   
+The code for data processing can be found in the Code section at the bottom of this document.
+
+```{r data processing, include=FALSE, message=FALSE, echo=FALSE}
+source("data_processing.R")
+```
+
+##### Summary of the data   
+
+```{r data table}
+datatable(df, options = list(dom = 't')) # show table control element 
+
+  
+```      
+       
+                
+                       
+          
+                      
+           
+##### Data Sampling   
+
+According to the Oxford English Dictionary (2nd edition) there are 171,476 words in current use. For normal everyday usage it would appear that approximately 3000 words are required to cover about 95%.    
+With over 100 million words in the total set of three files, and because of the large sizes of each, it is probably best to take a sample set. For my training set I will take 5% of the total, which should be more than sufficient. Also I create 3 separate samples, one for each file, as I may use this for comparative purposes later on.  
+
+Finally combine all 3 text samples into one corpus. I am using the `quanteda` package for the majority of the text analylsis.
+
+##### Tokenisation  
+
+The process here is to first of all consider how I want to clean and tokenise the corpus.   
+* Remove profanities    
+* Break into sentences        
+* Remove URLs         
+* Remove separators (white spaces, numbers and punctuation)   
+
+### Exploratory Analysis    
+In the exploration of the data I will attempt to understand the distribution of words and the relationship between the words in the corpora.   
+Some things to consider:   
+* Distributions of word frequencies   
+* Frequencies of 2-grams and 3-grams in the dataset   
+* How many unique words are needed in a frequency sorted dictionary to cover 50% of all word instances in the language?   
+
+##### Document-feature matrix
+
+In the quanteda package, it is possible to create a document-feature matrix. Here are some basic details.   
+I will use the N-gram model to work with the unigram, bigrams and trigrams, word associations of one, two and three words respectively. 
+
+```{r dfm}
+totalWords 
+
+Top10_words
+
+head(unigram, 3)
+head(bigram, 3)
+head(trigram, 3)
+
+```
+
+Top 30 Single word frequencies   
+
+```{r unigram}
+plot1
+```
+   
+Top 30 2-gram frequencies   
+
+```{r bigram}
+plot2
+```
+   
+Top 30 3-gram frequencies   
+
+```{r trigram}
+plot3
+```
+  
+Top 30 4-gram frequencies   
+
+```{r quadgram}
+plot4
+```
+
+Word Cloud   
+
+```{r wordcloud}
+textplot_wordcloud(capstone_dfm, color = rev(RColorBrewer::brewer.pal(10, "RdBu")))
+```
+
+Coverage   
+
+```{r coverage}
+ggplot(df2, aes(x =n, y =total)) + geom_line() + 
+    xlab('Number of Unique Words') + ylab('Coverage') + 
+    scale_x_continuous(labels = comma) +
+    scale_y_log10() +
+    ggtitle('Coverage per Number of Unigrams')
+```
+   
+
+
+### Findings and next steps   
+
+* Very small numbers of words represent a large coverage of the overall corpus.    
+
+* Even with a sample size of 5% the processing time is very long. I should explore ways of speeding up the run time, perhaps further cleaning of the data.      
+
+* Carry out statistical analysis on the n-grams and DFMs. This can include lexical diversity, document/feature similarity, relative frequency analysis and collocation analysis.    
+
+* Build a predictive algorithm. Explore compound multi-word expressions and target word collocations. Trigrams could be a useful indicator of predicting next word.    
+
+* Deploy a Shiny application to showcase the prediction model. It should show a selection of predicted words depending on the word(s) entered by the end user.   
+
+* Measure the prediction accuracy of the app and compare with other industry predictive applications.    
+
+
+
+
+
+
+
