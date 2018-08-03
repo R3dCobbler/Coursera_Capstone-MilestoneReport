@@ -29,7 +29,7 @@ It will form the basis for a prediction algorithm which can be utilised in an ap
 The data were downloaded from [here](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip) and unzipped.  
 The data zipfiles contain 4 different languages - German, English, Finnish and Russian.   
 For simplicity I will only use the English language files for this project.   
-The code for data processing can be found in the Code section at the bottom of this document.
+The code for data processing can be found [here](https://github.com/R3dCobbler/Coursera_Capstone-MilestoneReport/blob/master/data_processing.R).
 
 ```{r data processing, include=FALSE, message=FALSE, echo=FALSE}
 source("data_processing.R")
@@ -75,15 +75,34 @@ Some things to consider:
 In the quanteda package, it is possible to create a document-feature matrix. Here are some basic details.   
 I will use the N-gram model to work with the unigram, bigrams and trigrams, word associations of one, two and three words respectively. 
 
+Total words in the corpus  
 ```{r dfm}
-totalWords 
+totalWords
+```
 
+Top 10 most frequent words and number  
+```{r top10 words}
 Top10_words
-
-head(unigram, 3)
+```
+  
+Sample texts from unigram  
+```{r sample unigram}
+head(unigram, 3) 
+```
+  
+Sample texts from bigram  
+```{r sample bigram}
 head(bigram, 3)
-head(trigram, 3)
-
+```
+  
+Sample texts from trigram  
+```{r sample trigram}
+head(trigram, 3) 
+```
+  
+Sample texts from quadgram  
+```{r sample quadgram}
+head(quadgram, 3)
 ```
 
 Top 30 Single word frequencies   
@@ -113,7 +132,7 @@ plot4
 Word Cloud   
 
 ```{r wordcloud}
-textplot_wordcloud(capstone_dfm, color = rev(RColorBrewer::brewer.pal(10, "RdBu")))
+textplot_wordcloud(capstone_dfm, color = rev(RColorBrewer::brewer.pal(10, "RdBu")), max_words = 300)
 ```
 
 Coverage   
