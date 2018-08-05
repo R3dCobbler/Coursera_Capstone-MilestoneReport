@@ -1,77 +1,4 @@
-## Data Processing for Capstone Project - Milestone Report
-
-## General steps in this process   
-# 1. Summarize the objective,
-# 2. Describe the inputs and outputs,
-# 3. Generate a list of working assumptions to guide subsequent design decisions,
-# 4. Use information from the preceding steps to develop a design, and
-# 5. Develop the function prototype, coding the design steps as comments into the function prototype.
-
-# Once you decide how to clean and tokenize the corpus 
-# (e.g. do you break it into sentences? how do you handle stop words? etc.), 
-# you can proceed directly to build various sizes of n-grams with the tokens_ngrams() function.
-
-# The general process is:
-
-#   Load data from text files
-#   Summarise data
-#   Create a sample set
-#   Generate corpus
-#   Clean / transform the corpus
-#   Generate n-grams & write to output files
-#   Aggregate n-gram files to get frequencies by n-gram
-#   Break n-grams into "base" and "prediction"
-#   At this point you have the inputs you need for a prediction algorithm.
-
-## Task 0 - Understanding the Problem
-# Obtaining the data - Can you download the data and load/manipulate it in R?
-# Familiarizing yourself with NLP and text mining 
-# Learn about the basics of natural language processing and how it relates to the data science process you have learned in the Data Science Specialization.
-
-# Questions to consider
-
-# What do the data look like?
-# Where do the data come from?
-# Can you think of any other data sources that might help you in this project?
-# What are the common steps in natural language processing?
-# What are some common issues in the analysis of text data?
-# What is the relationship between NLP and the concepts you have learned in the Specialization?
-
-## Task 1 - Getting and cleaning the data
-
-# Tokenization - identifying appropriate tokens such as words, punctuation, and numbers. Writing a function that takes a file as input and returns a tokenized version of it.
-# Profanity filtering - removing profanity and other words you do not want to predict.
-# Take the file and return a tokenized version of it.
-
-
-## Task 2 - Exploratory Data Analysis
-
-# Exploratory analysis - perform a thorough exploratory analysis of the data, understanding the distribution of words and relationship between the words in the corpora.
-# Understand frequencies of words and word pairs - build figures and tables to understand variation in the frequencies of words and word pairs in the data.
-
-# Questions to consider
-
-# Some words are more frequent than others - what are the distributions of word frequencies?
-# What are the frequencies of 2-grams and 3-grams in the dataset?
-# How many unique words do you need in a frequency sorted dictionary to cover 50% of all word instances in the language? 90%?
-# How do you evaluate how many of the words come from foreign languages?
-# Can you think of a way to increase the coverage -- identifying words that may not be in the corpora or using a smaller number of words in the dictionary to cover the same number of phrases?
-
-
-## Task 3 - Modeling (not needed for the Milestone Report, but will be necessary for the final project submission)
-
-# Build basic n-gram model - using the exploratory analysis you performed, build a basic n-gram model for predicting the next word based on the previous 1, 2, or 3 words.
-# Build a model to handle unseen n-grams - in some cases people will want to type a combination of words that does not appear in the corpora. Build a model to handle cases where a particular n-gram isn't observed.
-
-# Questions to consider
-
-# How can you efficiently store an n-gram model (think Markov Chains)?
-# How can you use the knowledge about word frequencies to make your model smaller and more efficient?
-# How many parameters do you need (i.e. how big is n in your n-gram model)?
-# Can you think of simple ways to "smooth" the probabilities (think about giving all n-grams a non-zero probability even if they aren't observed in the data) ?
-# How do you evaluate whether your model is any good?
-# How can you use backoff models to estimate the probability of unobserved n-grams?
-
+## data_processing.R
 
 #-------------------Load suitable libraries for text analysis_______________________________
 
@@ -80,6 +7,7 @@ library(readtext)
 library(spacyr)
 library(quanteda.corpora)
 library(quanteda.dictionaries)
+library(text2vec)
 library(stopwords)
 library(stringi)
 library(tm)
@@ -138,7 +66,7 @@ df <- data.frame(File = c("Blogs", "News", "Twitter"),
 
 set.seed(091996)
 
-sample_size <- 0.05
+sample_size <- 0.01    # Use 1% of the total as a sample
 blogs_index <- sample(seq_len(length(blogs)),length(blogs)*sample_size)
 blogs_sample <- blogs[blogs_index[]]
 news_index <- sample(seq_len(length(news)),length(news)*sample_size)
@@ -150,13 +78,24 @@ allfiles <- rbind(blogs_sample, news_sample, twitter_sample)
 
 #-----------------------Create a corpus-----------------------------------------------------
 
-sample_corp <- corpus(allfiles)
-summary(sample_corp)
-
 blogs_corp <- corpus(blogs_sample)
 news_corp <- corpus(news_sample)
 twitter_corp <- corpus(twitter_sample)
 
+sample_corp <- corpus(allfiles)
+summary(sample_corp)
+
+# Break into sentences
+sample_corp <- corpus_reshape(sample_corp, to = "sentences")
+
+# Removes URLs
+sample_corp <- gsub("http[^[:space:]]*","", sample_corp) 
+
+#---------------Tokenise to segment text in the corpus by word boundaries-----------------
+
+# Remove separators
+mytoks <- tokens(sample_corp, remove_punct = TRUE, remove_twitter = TRUE) # removes white spaces, numbers, punctuation and twitter hashtags
+mytoks <- tokens_tolower(mytoks)  # convert to lower case
 
 # Remove profanity
 # Profanity filter reference: https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/
@@ -164,36 +103,41 @@ if (!file.exists("./data/profanities.txt")) {
     download.file("https://www.freewebheaders.com/full-list-of-bad-words-banned-by-google/",
                   destfile = "profanities.txt")
 }
-profanity <- readLines("./data/profanities.txt")
+profanity <- readLines("./data/profanities.txt", encoding = "UTF-8")
+profanity_corp <- corpus(profanity)
+prof_toks <- tokens(profanity_corp)
 
-# Break into sentences
-allSentCorp <- corpus_reshape(sample_corp, to = "sentences")
+clean_toks <- tokens_select(mytoks, prof_toks, selection = 'remove')
 
-# Removes URLs
-no_url <- gsub("http[^[:space:]]*","", allSentCorp) 
-
-# Remove separators
-toks <- tokens(no_url, remove_punct = TRUE, remove_twitter = TRUE) # removes white spaces, numbers, punctuation and twitter hashtags
-
-
-
-#----------------------Exploratory analysis-------------------------------------------------
-
-ngram <- tokens_ngrams(toks, n = 1:3)
+ngram <- tokens_ngrams(clean_toks, n = 1:4)
 head(ngram[[1]], 50)
 tail(ngram[[1]], 50)
 
-capstone_dfm <- dfm(toks)
+# Create a document frequency matrix
+capstone_dfm <- dfm(clean_toks)
+# Trim the dfm, removing sparse terms
+capstone_trim <- dfm_trim(capstone_dfm, min_docfreq = 5)
+# Create a Feature Co-Occurence matrix
+capstonefcm <- fcm(capstone_trim)
+
+#----------------------Exploratory analysis-------------------------------------------------
+
+feat <- names(topfeatures(capstonefcm, 50))
+topcap_fcm <- fcm_select(capstonefcm, feat)
+dim(topcap_fcm)
+
+size <- log(colSums(dfm_select(capstone_dfm, feat)))
+textplot_network(topcap_fcm, min_freq = 0.8, vertex_size = size / max(size) * 3)
 
 totalWords <- sum(colSums(capstone_dfm)) # Gives total number of words
 Top10_words <- topfeatures(capstone_dfm) # Gives top 10 most frequent words
 
 
 
-unigram <- tokens_ngrams(toks, n = 1)
-bigram <- tokens_ngrams(toks, n = 2)
-trigram <- tokens_ngrams(toks, n = 3)
-quadgram <- tokens_ngrams(toks, n = 4)
+unigram <- tokens_ngrams(mytoks, n = 1)
+bigram <- tokens_ngrams(mytoks, n = 2)
+trigram <- tokens_ngrams(mytoks, n = 3)
+quadgram <- tokens_ngrams(mytoks, n = 4)
 
 unigram_dfm <- dfm(unigram)
 bigram_dfm <- dfm(bigram)
@@ -262,6 +206,9 @@ cover <- topfeatures(unigram_dfm, length(unigram_dfm))
 df2 <- data.frame(cover)
 df2$n <- c(1:nrow(df2))
 df2$total <- cumsum(df2$cover)
+
+#---------------------Modelling---------------------------------------------------------
+
 
 
 
